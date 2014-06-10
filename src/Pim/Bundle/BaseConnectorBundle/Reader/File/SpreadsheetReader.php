@@ -9,7 +9,6 @@ use Akeneo\Bundle\BatchBundle\Item\ItemReaderInterface;
 use Akeneo\Bundle\BatchBundle\Item\UploadedFileAwareInterface;
 use Akeneo\Bundle\BatchBundle\Entity\StepExecution;
 use Akeneo\Bundle\BatchBundle\Step\StepExecutionAwareInterface;
-use Akeneo\Bundle\BatchBundle\Item\InvalidItemException;
 use Pim\Bundle\CatalogBundle\Validator\Constraints\File as AssertFile;
 use Pim\Bundle\BaseConnectorBundle\Archiver\InvalidItemsCsvArchiver;
 
@@ -20,7 +19,7 @@ use Pim\Bundle\BaseConnectorBundle\Archiver\InvalidItemsCsvArchiver;
  * @copyright 2013 Akeneo SAS (http://www.akeneo.com)
  * @license   http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  */
-class CsvReader extends FileReader implements
+class SpreadsheetReader extends FileIteratorReader implements
     ItemReaderInterface,
     UploadedFileAwareInterface,
     StepExecutionAwareInterface
@@ -29,13 +28,15 @@ class CsvReader extends FileReader implements
      * @Assert\NotBlank(groups={"Execution"})
      * @AssertFile(
      *     groups={"Execution"},
-     *     allowedExtensions={"csv", "zip"},
+     *     allowedExtensions={"csv", "zip", "xlsx"},
      *     mimeTypes={
      *         "text/csv",
      *         "text/comma-separated-values",
      *         "text/plain",
      *         "application/csv",
-     *         "application/zip"
+     *         "application/zip",
+     *         "application/vnd.ms-excel",
+     *         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
      *     }
      * )
      */
@@ -59,6 +60,11 @@ class CsvReader extends FileReader implements
     protected $escape = '\\';
 
     /**
+     * @var string
+     */
+    protected $encoding = '';
+
+    /**
      * @var boolean
      *
      * @Assert\Type(type="bool")
@@ -76,11 +82,6 @@ class CsvReader extends FileReader implements
      */
     protected $extractedPath;
 
-    /**
-     * @var SplFileObject
-     */
-    protected $csv;
-
     /** @var InvalidItemsCsvArchiver */
     protected $archiver;
 
@@ -95,8 +96,9 @@ class CsvReader extends FileReader implements
     /**
      * Remove the extracted directory
      */
-    public function __destruct()
+    public function flush()
     {
+        parent::flush();
         if ($this->extractedPath) {
             $fileSystem = new Filesystem();
             $fileSystem->remove($this->extractedPath);
@@ -114,13 +116,15 @@ class CsvReader extends FileReader implements
             new Assert\NotBlank(),
             new AssertFile(
                 array(
-                    'allowedExtensions' => array('csv', 'zip'),
+                    'allowedExtensions' => array('csv', 'zip', 'xlsx'),
                     'mimeTypes'         => array(
                         'text/csv',
                         'text/comma-separated-values',
                         'text/plain',
                         'application/csv',
-                        'application/zip'
+                        'application/zip',
+                        "application/vnd.ms-excel",
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                     )
                 )
             )
@@ -231,78 +235,14 @@ class CsvReader extends FileReader implements
     }
 
     /**
-     * Set the uploadAllowed property
-     * @param boolean $uploadAllowed
-     *
-     * @return CsvReader
-     */
-    public function setUploadAllowed($uploadAllowed)
-    {
-        $this->uploadAllowed = $uploadAllowed;
-
-        return $this;
-    }
-
-    /**
-     * Get the uploadAllowed property
-     * @return boolean $uploadAllowed
-     */
-    public function isUploadAllowed()
-    {
-        return $this->uploadAllowed;
-    }
-
-    /**
      * {@inheritdoc}
      */
-    public function read()
+    public function initialize()
     {
-        if (null === $this->csv) {
-            if (mime_content_type($this->filePath) === 'application/zip') {
-                $this->extractZipArchive();
-            }
-
-            $this->csv = new \SplFileObject($this->filePath);
-            $this->csv->setFlags(
-                \SplFileObject::READ_CSV   |
-                \SplFileObject::READ_AHEAD |
-                \SplFileObject::SKIP_EMPTY |
-                \SplFileObject::DROP_NEW_LINE
-            );
-            $this->csv->setCsvControl($this->delimiter, $this->enclosure, $this->escape);
-            $this->fieldNames = $this->csv->fgetcsv();
-            $this->archiver->setHeader($this->fieldNames);
+        if ('zip' === strtolower(pathinfo($this->filePath, PATHINFO_EXTENSION))) {
+            $this->extractZipArchive();
         }
-
-        $data = $this->csv->fgetcsv();
-
-        if (false !== $data) {
-            if ($data === array(null) || $data === null) {
-                return null;
-            }
-            if ($this->stepExecution) {
-                $this->stepExecution->incrementSummaryInfo('read');
-            }
-
-            if (count($this->fieldNames) !== count($data)) {
-                throw new InvalidItemException(
-                    'pim_base_connector.steps.csv_reader.invalid_item_columns_count',
-                    $data,
-                    array(
-                        '%totalColumnsCount%' => count($this->fieldNames),
-                        '%itemColumnsCount%'  => count($data),
-                        '%csvPath%'           => $this->csv->getRealPath(),
-                        '%lineno%'            => $this->csv->key()
-                    )
-                );
-            }
-
-            $data = array_combine($this->fieldNames, $data);
-        } else {
-            throw new \RuntimeException('An error occured while reading the csv.');
-        }
-
-        return $data;
+        parent::initialize();
     }
 
     /**
@@ -310,18 +250,11 @@ class CsvReader extends FileReader implements
      */
     public function getConfigurationFields()
     {
-        return array(
-            'filePath' => array(
+        return parent::getConfigurationFields() + array(
+            'encoding' => array(
                 'options' => array(
-                    'label' => 'pim_base_connector.import.filePath.label',
-                    'help'  => 'pim_base_connector.import.filePath.help'
-                )
-            ),
-            'uploadAllowed' => array(
-                'type'    => 'switch',
-                'options' => array(
-                    'label' => 'pim_base_connector.import.uploadAllowed.label',
-                    'help'  => 'pim_base_connector.import.uploadAllowed.help'
+                    'label' => 'pim_base_connector.import.encoding.label',
+                    'help'  => 'pim_base_connector.import.encoding.help'
                 )
             ),
             'delimiter' => array(
@@ -382,7 +315,7 @@ class CsvReader extends FileReader implements
             $archive->close();
             $this->extractedPath = $targetDir;
 
-            $csvFiles = glob($targetDir . '/*.[cC][sS][vV]');
+            $csvFiles = glob($targetDir . '/*.[cC][sS][vV]') + glob($targetDir . '/*.[xX][lL][sS][xX]');
 
             $csvCount = count($csvFiles);
             if (1 !== $csvCount) {
@@ -396,5 +329,23 @@ class CsvReader extends FileReader implements
 
             $this->filePath = current($csvFiles);
         }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getIteratorOptions()
+    {
+        $options = parent::getIteratorOptions();
+        if ('csv' === strtolower(pathinfo($this->filePath, PATHINFO_EXTENSION))) {
+            $options['spreadsheet_options'] = [
+                'delimiter' => $this->delimiter,
+                'enclosure' => $this->enclosure,
+                'escape'    => $this->escape,
+                'encoding'  => $this->encoding,
+            ];
+        }
+
+        return $options;
     }
 }
