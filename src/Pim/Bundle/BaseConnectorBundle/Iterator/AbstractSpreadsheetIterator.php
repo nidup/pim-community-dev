@@ -78,8 +78,6 @@ abstract class AbstractSpreadsheetIterator extends AbstractFileIterator implemen
             new \ArrayIterator($spreadsheet->getWorksheets()),
             function ($title)  {
                 return $this->isReadableWorksheet($title);
-
-                return false;
             }
         );
         $this->worksheetIterator->rewind();
@@ -225,7 +223,7 @@ abstract class AbstractSpreadsheetIterator extends AbstractFileIterator implemen
      */
     protected function getArrayHelper()
     {
-        return $this->container->get('akeneo_spreadsheet_parser.iterator.array_helper');
+        return $this->container->get('pim_base_connector.iterator.array_helper');
     }
 
     /**

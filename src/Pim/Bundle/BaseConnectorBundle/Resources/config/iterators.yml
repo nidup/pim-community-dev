@@ -1,0 +1,13 @@
+parameters:
+    pim_base_connector.iterator.file.factory.class:        Pim\Bundle\BaseConnectorBundle\Iterator\FileIteratorFactory
+    pim_base_connector.iterator.file.spreadsheet.class:    Pim\Bundle\BaseConnectorBundle\Iterator\SpreadsheetIterator
+    pim_base_connector.iterator.array_helper.class:        Pim\Bundle\BaseConnectorBundle\Iterator\ArrayHelper
+
+services:
+    pim_base_connector.iterator.file.factory:
+        class: %pim_base_connector.iterator.file.factory.class%
+        arguments:
+            - '@service_container'
+
+    pim_base_connector.iterator.array_helper:
+        class: %pim_base_connector.iterator.array_helper%
