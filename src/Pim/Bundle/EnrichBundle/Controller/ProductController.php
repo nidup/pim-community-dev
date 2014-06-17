@@ -2,9 +2,13 @@
 
 namespace Pim\Bundle\EnrichBundle\Controller;
 
+use Pim\Bundle\EnrichBundle\EnrichEvents;
 use Symfony\Bundle\FrameworkBundle\Templating\EngineInterface;
 use Doctrine\Common\Persistence\ManagerRegistry;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\Form\FormFactoryInterface;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\RouterInterface;
@@ -70,6 +74,11 @@ class ProductController extends AbstractDoctrineController
     protected $securityFacade;
 
     /**
+     * @var EventDispatcherInterface
+     */
+    protected $eventDispatcher;
+
+    /**
      * Constant used to redirect to the datagrid when save edit form
      * @staticvar string
      */
@@ -98,6 +107,7 @@ class ProductController extends AbstractDoctrineController
      * @param VersionManager           $versionManager
      * @param SecurityFacade           $securityFacade
      * @param ProductCategoryManager   $prodCatManager
+     * @param EventDispatcherInterface $eventDispatcher
      */
     public function __construct(
         Request $request,
@@ -113,7 +123,8 @@ class ProductController extends AbstractDoctrineController
         UserContext $userContext,
         VersionManager $versionManager,
         SecurityFacade $securityFacade,
-        ProductCategoryManager $prodCatManager
+        ProductCategoryManager $prodCatManager,
+        EventDispatcherInterface $eventDispatcher
     ) {
         parent::__construct(
             $request,
@@ -132,6 +143,7 @@ class ProductController extends AbstractDoctrineController
         $this->versionManager    = $versionManager;
         $this->securityFacade    = $securityFacade;
         $this->productCatManager = $prodCatManager;
+        $this->eventDispatcher   = $eventDispatcher;
     }
 
     /**
@@ -197,14 +209,45 @@ class ProductController extends AbstractDoctrineController
     /**
      * Edit product
      *
-     * @param Request $request
      * @param integer $id
      *
      * @Template
      * @AclAncestor("pim_enrich_product_edit")
      * @return array
      */
-    public function editAction(Request $request, $id)
+    public function editAction($id)
+    {
+        $product = $this->findProductOr404($id);
+
+        $this->getEventDispatcher()->dispatch(EnrichEvents::PRE_EDIT_PRODUCT, new GenericEvent($product));
+
+        $this->productManager->ensureAllAssociationTypes($product);
+
+        $form = $this->createForm(
+            'pim_product_edit',
+            $product,
+            $this->getEditFormOptions($product)
+        );
+
+        $this->getEventDispatcher()->dispatch(EnrichEvents::POST_EDIT_PRODUCT, new GenericEvent($product));
+
+        $channels = $this->getRepository('PimCatalogBundle:Channel')->findAll();
+        $trees    = $this->productCatManager->getProductCountByTree($product);
+
+        return $this->getProductEditTemplateParams($form, $product, $channels, $trees);
+    }
+
+    /**
+     * Update product
+     *
+     * @param Request $request
+     * @param integer $id
+     *
+     * @Template("PimEnrichBundle:Product:edit.html.twig")
+     * @AclAncestor("pim_enrich_product_edit")
+     * @return RedirectResponse
+     */
+    public function updateAction(Request $request, $id)
     {
         $product = $this->findProductOr404($id);
 
@@ -216,48 +259,36 @@ class ProductController extends AbstractDoctrineController
             $this->getEditFormOptions($product)
         );
 
-        if ($request->isMethod('POST')) {
-            $form->submit($request, false);
+        $form->submit($request, false);
 
-            if ($form->isValid()) {
-                try {
-                    $this->productManager->handleMedia($product);
-                    $this->productManager->save($product);
+        if ($form->isValid()) {
+            try {
+                $this->productManager->handleMedia($product);
+                $this->productManager->save($product);
 
-                    $this->addFlash('success', 'flash.product.updated');
-                } catch (MediaManagementException $e) {
-                    $this->addFlash('error', $e->getMessage());
-                }
-
-                // TODO : Check if the locale exists and is activated
-                $params = array('id' => $product->getId(), 'dataLocale' => $this->getDataLocale());
-                if ($comparisonLocale = $this->getComparisonLocale()) {
-                    $params['compareWith'] = $comparisonLocale;
-                }
-
-                return $this->redirectAfterEdit($params);
-            } else {
-                $this->addFlash('error', 'flash.product.invalid');
+                $this->addFlash('success', 'flash.product.updated');
+            } catch (MediaManagementException $e) {
+                $this->addFlash('error', $e->getMessage());
             }
+
+            // TODO : Check if the locale exists and is activated
+            $params = [
+                'id' => $product->getId(),
+                'dataLocale' => $this->getDataLocale(),
+            ];
+            if ($comparisonLocale = $this->getComparisonLocale()) {
+                $params['compareWith'] = $comparisonLocale;
+            }
+
+            return $this->redirectAfterEdit($params);
+        } else {
+            $this->addFlash('error', 'flash.product.invalid');
         }
 
         $channels = $this->getRepository('PimCatalogBundle:Channel')->findAll();
         $trees    = $this->productCatManager->getProductCountByTree($product);
 
-        return array(
-            'form'             => $form->createView(),
-            'dataLocale'       => $this->getDataLocale(),
-            'comparisonLocale' => $this->getComparisonLocale(),
-            'channels'         => $channels,
-            'attributesForm'   =>
-                $this->getAvailableAttributesForm($product->getAttributes())->createView(),
-            'product'          => $product,
-            'trees'            => $trees,
-            'created'          => $this->versionManager->getOldestLogEntry($product),
-            'updated'          => $this->versionManager->getNewestLogEntry($product),
-            'locales'          => $this->userContext->getUserLocales(),
-            'createPopin'      => $this->getRequest()->get('create_popin')
-        );
+        return $this->getProductEditTemplateParams($form, $product, $channels, $trees);
     }
 
     /**
@@ -514,5 +545,45 @@ class ProductController extends AbstractDoctrineController
     protected function getCreateFormOptions(ProductInterface $product)
     {
         return array();
+    }
+
+    /**
+     * @return EventDispatcherInterface
+     */
+    protected function getEventDispatcher()
+    {
+        return $this->eventDispatcher;
+    }
+
+    /**
+     * Get the product edit template parameters
+     *
+     * @param FormInterface    $form
+     * @param ProductInterface $product
+     * @param array            $channels
+     * @param array            $trees
+     *
+     * @return array
+     */
+    protected function getProductEditTemplateParams(
+        FormInterface $form,
+        ProductInterface $product,
+        array $channels,
+        array $trees
+    ) {
+        return array(
+            'form'             => $form->createView(),
+            'dataLocale'       => $this->getDataLocale(),
+            'comparisonLocale' => $this->getComparisonLocale(),
+            'channels'         => $channels,
+            'attributesForm'   =>
+                $this->getAvailableAttributesForm($product->getAttributes())->createView(),
+            'product'          => $product,
+            'trees'            => $trees,
+            'created'          => $this->versionManager->getOldestLogEntry($product),
+            'updated'          => $this->versionManager->getNewestLogEntry($product),
+            'locales'          => $this->userContext->getUserLocales(),
+            'createPopin'      => $this->getRequest()->get('create_popin')
+        );
     }
 }

@@ -32,22 +32,22 @@ class NavigationContext extends RawMinkContext implements PageObjectAwareInterfa
     /**
      * @var string $username
      */
-    private $username = null;
+    protected $username = null;
 
     /**
      * @var string $password
      */
-    private $password = null;
+    protected $password = null;
 
     /**
      * @var PageFactory $pageFactory
      */
-    private $pageFactory = null;
+    protected $pageFactory = null;
 
     /**
      * @var array $pageMapping
      */
-    private $pageMapping = array(
+    protected $pageMapping = array(
         'association types'        => 'AssociationType index',
         'attributes'               => 'Attribute index',
         'categories'               => 'Category tree creation',
@@ -133,6 +133,31 @@ class NavigationContext extends RawMinkContext implements PageObjectAwareInterfa
 
         $this->currentPage = $page;
         $this->getCurrentPage()->open();
+
+        return new Step\Then('I should see "403 Forbidden"');
+    }
+
+    /**
+     * @param string $not
+     * @param string $identifier
+     * @param string $page
+     *
+     * @return null|Then
+     * @Given /^I should( not)? be able to edit the "([^"]*)" (\w+)$/
+     * @Given /^I should( not)? be able to access the "([^"]*)" (\w+) page$/
+     */
+    public function iShouldNotBeAbleToAccessTheEntityEditPage($not, $identifier, $page)
+    {
+        if (!$not) {
+            return $this->iAmOnTheEntityEditPage($identifier, $page);
+        }
+
+        $page = ucfirst($page);
+        $getter = sprintf('get%s', $page);
+        $entity = $this->getFixturesContext()->$getter($identifier);
+
+        $this->currentPage = sprintf('%s edit', $page);
+        $this->getCurrentPage()->open(['id' => $entity->getId()]);
 
         return new Step\Then('I should see "403 Forbidden"');
     }
@@ -480,7 +505,7 @@ class NavigationContext extends RawMinkContext implements PageObjectAwareInterfa
     /**
      * @param string $expected
      */
-    private function assertAddress($expected)
+    protected function assertAddress($expected)
     {
         $actual = $this->getSession()->getCurrentUrl();
         $result = strpos($actual, $expected) !== false;
@@ -490,7 +515,7 @@ class NavigationContext extends RawMinkContext implements PageObjectAwareInterfa
     /**
      * A method that logs the user in with the previously provided credentials if required by the page
      */
-    private function loginIfRequired()
+    protected function loginIfRequired()
     {
         $loginForm = $this->getCurrentPage()->find('css', '.form-signin');
         if ($loginForm) {
@@ -506,7 +531,7 @@ class NavigationContext extends RawMinkContext implements PageObjectAwareInterfa
      *
      * @return void
      */
-    private function wait($time = 10000, $condition = null)
+    protected function wait($time = 10000, $condition = null)
     {
         $this->getMainContext()->wait($time, $condition);
     }
@@ -514,7 +539,7 @@ class NavigationContext extends RawMinkContext implements PageObjectAwareInterfa
     /**
      * @return FixturesContext
      */
-    private function getFixturesContext()
+    protected function getFixturesContext()
     {
         return $this->getMainContext()->getSubcontext('fixtures');
     }

@@ -11,19 +11,26 @@
 - Group datagrid filters by attribute groups
 - Ease the adding of new filters and sorters in ProductQueryBuilder
 - All grids can now benefit from the multistep mass edition wizard (this was reserved to the the product grid before)
-- Ease the adding of subscribers in ProductEditType and AttributeGroupType with addEventSubscriber methods
+- Ease the adding of subscribers in ProductEditType, JobInstanceType and AttributeGroupType with addEventSubscriber methods
 - Introduce a ProductValueFormFactory which dispatch a EnrichEvents::CREATE_PRODUCT_VALUE_FORM to ease the product value form customization
 - MongoDB completeness calculation performances
-- Introduce Abstract models for Association, Media, Metric, Price, to ease the overriding of theses classes
+- Introduce Abstract models for Association, Media, Metric, Price, Completeness to ease the overriding/re-using of theses classes
 - Allow to override of a repository avoiding to redefine the entity mapping
+- Introduce a datagrid choice filter that loads attribute option choices based on the search query to enhance performance with a large number of attribute options
+- Apply "Remove product" permission to hide mass delete and delete row action
+- Change "launch" button by "view" on job profile datagrids
+- Create a `JobInstanceRepository`
 
 ## Bug fixes
-- Replace usage of Symfony process to launch background job with a simple exec, more reliable on a heavily loaded environment
-- Add missing translation keys for "manage filters", "all", "records", etc
+- Replaced usage of Symfony process to launch background job with a simple exec, more reliable on a heavily loaded environment
+- Added missing translation keys for "manage filters", "all", "records", etc
 - Images import from fixtures now works
 - Fixed versions not being properly generated when real-time versioning is disabled (in imports/exports)
-- Deleting completeness when a locale of a channel is deleted
-- Display flags in the completenesses grid
+- Deleted completeness when a locale of a channel is deleted
+- Displayed flags in the completenesses grid
+- Fixed a memory leak on product import when using MongoDB
+- Fixed a bug with image upload on product with a "\" or "/" in their sku
+- Fixed a bug that silently failed when uploading file that does not comply with server configuration
 
 ## BC breaks
 - Remove FlexibleEntityBundle
@@ -39,7 +46,7 @@
 - Remove AbstractAttributeType::buildValueFormType, change visibility of prepareValueFormName, prepareValueFormAlias, prepareValueFormOptions, prepareValueFormConstraints, prepareValueFormData to public
 - Remove `MetricBaseValuesSubscriber` and create one for MongoDB and another one for ORM
 - Create `OptionFilter`, `OptionsFilter` for ORM and MongoDB implementations
-- InstallerBundle/LoaderInterface has been changed to pass a ProdutManager to manage media (loading images from fixtures)
+- InstallerBundle/LoaderInterface has been changed to pass ProductManager to manage media (loading images from fixtures)
 - Refactor VersioningBundle - a lot of API changes.
 - Remove the Doctrine registry dependency from `Pim\Bundle\CatalogBundle\Manager\CompletenessManager` and use only the family repository
 - Remove the Doctrine registry dependency from `Pim\Bundle\CatalogBundle\Doctrine\ORM\CompletenessGenerator` and use only the entity manager
@@ -49,6 +56,7 @@
 - Remove deprecated ConfigureGroupProductGridListener and add parameter in method ConfiguratorInterface::configure(DatagridConfiguration $configuration)
 - Category and CategoryRepository no longer extend AbstractSegment and SegmentRepository, previously inherited methods are now in these classes
 - Change constructor of ProductExportController to remove CurrencyManager and AssociationTypeManager args
+- Change constructor of `Pim\Bundle\EnrichBundle\Controller\ProductController` and `Pim\Bundle\ImportExportController\JobProfileController` (inject event dispatcher)
 
 # 1.1.0 - "Rabbit Punch" (2014-04-16)
 
