@@ -30,7 +30,7 @@ abstract class AbstractIteratorReader extends AbstractConfigurableStepElement im
     /**
      * @var boolean
      */
-    protected $bulkMode;
+    protected $bulkMode = false;
 
     /**
      * Constructor

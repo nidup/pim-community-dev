@@ -4,8 +4,8 @@ namespace Pim\Bundle\BaseConnectorBundle\Reader\File;
 
 use Akeneo\Bundle\BatchBundle\Item\UploadedFileAwareInterface;
 use Pim\Bundle\BaseConnectorBundle\Reader\AbstractIteratorReader;
+use Pim\Bundle\BaseConnectorBundle\Iterator\FileIteratorFactory;
 use Pim\Bundle\CatalogBundle\Validator\Constraints\File as AssertFile;
-use Pim\Bundle\ExcelConnectorBundle\Iterator\FileIteratorFactory;
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Validator\Constraints as Assert;
 
