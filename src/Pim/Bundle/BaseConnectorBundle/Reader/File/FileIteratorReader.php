@@ -166,6 +166,7 @@ class FileIteratorReader extends AbstractIteratorReader implements UploadedFileA
         return $this->filePath;
     }
 
+    
     /**
      * {@inheritdoc}
      */

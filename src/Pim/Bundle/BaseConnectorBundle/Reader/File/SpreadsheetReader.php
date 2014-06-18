@@ -4,31 +4,23 @@ namespace Pim\Bundle\BaseConnectorBundle\Reader\File;
 
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Component\HttpFoundation\File\File;
-use Akeneo\Bundle\BatchBundle\Item\ItemReaderInterface;
-use Akeneo\Bundle\BatchBundle\Item\UploadedFileAwareInterface;
 use Akeneo\Bundle\BatchBundle\Entity\StepExecution;
-use Akeneo\Bundle\BatchBundle\Step\StepExecutionAwareInterface;
 use Pim\Bundle\CatalogBundle\Validator\Constraints\File as AssertFile;
-use Pim\Bundle\BaseConnectorBundle\Archiver\InvalidItemsCsvArchiver;
 
 /**
- * Csv reader
+ * Spreadsheet reader
  *
  * @author    Gildas Quemener <gildas@akeneo.com>
  * @copyright 2013 Akeneo SAS (http://www.akeneo.com)
  * @license   http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  */
-class SpreadsheetReader extends FileIteratorReader implements
-    ItemReaderInterface,
-    UploadedFileAwareInterface,
-    StepExecutionAwareInterface
+class SpreadsheetReader extends FileIteratorReader 
 {
     /**
      * @Assert\NotBlank(groups={"Execution"})
      * @AssertFile(
      *     groups={"Execution"},
-     *     allowedExtensions={"csv", "zip", "xlsx"},
+     *     allowedExtensions={"csv", "zip", "xlsx", "xlsm"},
      *     mimeTypes={
      *         "text/csv",
      *         "text/comma-separated-values",
@@ -65,14 +57,6 @@ class SpreadsheetReader extends FileIteratorReader implements
     protected $encoding = '';
 
     /**
-     * @var boolean
-     *
-     * @Assert\Type(type="bool")
-     * @Assert\True(groups={"UploadExecution"})
-     */
-    protected $uploadAllowed = false;
-
-    /**
      * @var StepExecution
      */
     protected $stepExecution;
@@ -81,17 +65,6 @@ class SpreadsheetReader extends FileIteratorReader implements
      * @var string $extractedPath
      */
     protected $extractedPath;
-
-    /** @var InvalidItemsCsvArchiver */
-    protected $archiver;
-
-    /**
-     * @param InvalidItemsCsvArchiver $archiver
-     */
-    public function __construct(InvalidItemsCsvArchiver $archiver)
-    {
-        $this->archiver = $archiver;
-    }
 
     /**
      * Remove the extracted directory
@@ -116,7 +89,7 @@ class SpreadsheetReader extends FileIteratorReader implements
             new Assert\NotBlank(),
             new AssertFile(
                 array(
-                    'allowedExtensions' => array('csv', 'zip', 'xlsx'),
+                    'allowedExtensions' => array('csv', 'zip', 'xlsx', 'xlsm'),
                     'mimeTypes'         => array(
                         'text/csv',
                         'text/comma-separated-values',
@@ -129,43 +102,6 @@ class SpreadsheetReader extends FileIteratorReader implements
                 )
             )
         );
-    }
-
-    /**
-     * Set uploaded file
-     * @param string $uploadedFile
-     *
-     * @return CsvReader
-     */
-    public function setUploadedFile(File $uploadedFile)
-    {
-        $this->filePath = $uploadedFile->getRealPath();
-        $this->csv = null;
-
-        return $this;
-    }
-
-    /**
-     * Set file path
-     * @param string $filePath
-     *
-     * @return CsvReader
-     */
-    public function setFilePath($filePath)
-    {
-        $this->filePath = $filePath;
-        $this->csv = null;
-
-        return $this;
-    }
-
-    /**
-     * Get file path
-     * @return string $filePath
-     */
-    public function getFilePath()
-    {
-        return $this->filePath;
     }
 
     /**
@@ -279,14 +215,6 @@ class SpreadsheetReader extends FileIteratorReader implements
     }
 
     /**
-     * {@inheritdoc}
-     */
-    public function setStepExecution(StepExecution $stepExecution)
-    {
-        $this->stepExecution = $stepExecution;
-    }
-
-    /**
      * Extract the zip archive to be imported
      * @throws \RuntimeException When archive cannot be opened or extracted
      *                           or does not contain exactly one csv file
@@ -315,13 +243,13 @@ class SpreadsheetReader extends FileIteratorReader implements
             $archive->close();
             $this->extractedPath = $targetDir;
 
-            $csvFiles = glob($targetDir . '/*.[cC][sS][vV]') + glob($targetDir . '/*.[xX][lL][sS][xX]');
+            $csvFiles = glob($targetDir . '/*.[cC][sS][vV]') + glob($targetDir . '/*.[xX][lL][sS][xXmM]');
 
             $csvCount = count($csvFiles);
             if (1 !== $csvCount) {
                 throw new \RuntimeException(
                     sprintf(
-                        'Expecting the root directory of the archive to contain exactly 1 csv file, found %d',
+                        'Expecting the root directory of the archive to contain exactly 1 csv/xlsx file, found %d',
                         $csvCount
                     )
                 );
@@ -338,7 +266,7 @@ class SpreadsheetReader extends FileIteratorReader implements
     {
         $options = parent::getIteratorOptions();
         if ('csv' === strtolower(pathinfo($this->filePath, PATHINFO_EXTENSION))) {
-            $options['spreadsheet_options'] = [
+            $options['parser_options'] = [
                 'delimiter' => $this->delimiter,
                 'enclosure' => $this->enclosure,
                 'escape'    => $this->escape,
