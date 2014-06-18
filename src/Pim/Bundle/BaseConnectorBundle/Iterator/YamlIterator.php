@@ -2,22 +2,22 @@
 
 namespace Pim\Bundle\BaseConnectorBundle\Iterator;
 
-use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\OptionsResolver\OptionsResolverInterface;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- *
+ * YAML file iterator
+ * 
  * @author    Antoine Guigan <antoine@akeneo.com>
  * @copyright 2013 Akeneo SAS (http://www.akeneo.com)
  * @license   http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  */
-class YamlIterator extends \IteratorIterator
+class YamlIterator extends AbstractFileIterator
 {
     /**
-     * @var array
+     * @var \Iterator
      */
-    protected $options;
+    protected $iterator;
 
     /**
      * Constructor
@@ -27,12 +27,9 @@ class YamlIterator extends \IteratorIterator
      */
     public function __construct($file, array $options=[])
     {
-        $resolver = new OptionsResolver;
-        $this->setDefaultOptions($resolver);
-        $this->options = $resolver->resolve($options);
+        parent::__construct($file, $options);
 
-        $iterator = new ArrayIterator(current(Yaml::parse($file)));
-        parent::__construct($iterator);
+        $this->iterator = new \ArrayIterator(current(Yaml::parse($file)));
     }
 
     /**
@@ -40,14 +37,17 @@ class YamlIterator extends \IteratorIterator
      */
     public function current()
     {
-        $current = parent::current();
-        if (isset($this->options['code_field']) && !isset($current[$this->options['code_field']])) {
+        $current = $this->iterator->current();
+        if (null !== $current && 
+            isset($this->options['code_field']) && !isset($current[$this->options['code_field']])) {
+
             $current[$this->options['code_field']] = $this->key();
         }
 
         return $current;
     }
 
+    
     /**
      * Sets the default options
      * 
@@ -56,5 +56,37 @@ class YamlIterator extends \IteratorIterator
     protected function setDefaultOptions(OptionsResolverInterface $resolver)
     {
         $resolver->setOptional('code_field');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function key()
+    {
+        return $this->iterator->key();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function next()
+    {
+        return $this->iterator->next();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function rewind()
+    {
+        $this->iterator->rewind();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function valid()
+    {
+        return $this->iterator->valid();
     }
 }
