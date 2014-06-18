@@ -41,10 +41,7 @@ class SpreadsheetIterator extends AbstractSpreadsheetIterator
      */
     protected function createValuesIterator()
     {
-        $iterator = $this->getSpreadsheet()->createRowIterator(
-            $this->worksheetIterator->key(),
-            $this->options['spreadsheet_options']
-        );
+        $iterator = $this->createRowIterator();
         $iterator->rewind();
         while ($iterator->valid() && ((int) $this->options['label_row'] > $iterator->key())) {
             $iterator->next();

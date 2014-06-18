@@ -210,7 +210,7 @@ abstract class AbstractSpreadsheetIterator extends AbstractFileIterator implemen
         $resolver->setDefaults(
             [
                 'exclude_worksheets'  => [],
-                'spreadsheet_options' => []
+                'parser_options'      => []
             ]
         );
         $resolver->setOptional(['include_worksheets']);
@@ -237,9 +237,22 @@ abstract class AbstractSpreadsheetIterator extends AbstractFileIterator implemen
     }
 
     /**
+     * Creates a row iterator for the current worksheet
+     * 
+     * @return \Iterator
+     */
+    protected function createRowIterator()
+    {
+        return $this->getSpreadsheet()->createRowIterator(
+            $this->worksheetIterator->key(),
+            $this->options['parser_options']
+        );
+    }
+
+    /**
      * Creates the value iterator
      *
-     * @return Iterator
+     * @return \Iterator
      */
     abstract protected function createValuesIterator();
 }
