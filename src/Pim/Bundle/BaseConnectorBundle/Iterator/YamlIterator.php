@@ -55,7 +55,7 @@ class YamlIterator extends AbstractFileIterator
      */
     protected function setDefaultOptions(OptionsResolverInterface $resolver)
     {
-        $resolver->setOptional('code_field');
+        $resolver->setOptional(['code_field']);
     }
 
     /**

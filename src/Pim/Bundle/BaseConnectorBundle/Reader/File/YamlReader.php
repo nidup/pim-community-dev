@@ -18,7 +18,7 @@ use Pim\Bundle\CatalogBundle\Validator\Constraints\File as AssertFile;
  * @copyright 2014 Akeneo SAS (http://www.akeneo.com)
  * @license   http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  */
-class SpreadsheetReader extends FileIteratorReader implements
+class YamlReader extends FileIteratorReader implements
     ItemReaderInterface,
     UploadedFileAwareInterface,
     StepExecutionAwareInterface
