@@ -50,7 +50,8 @@ class DisableFamilyFieldsSubscriber implements EventSubscriberInterface
     public function postSetData(FormEvent $event)
     {
         if ($event->getData() instanceof Family &&
-            false === $this->securityFacade->isGranted('pim_enrich_family_edit')
+            null !== $event->getData()->getId() &&
+            false === $this->securityFacade->isGranted('pim_enrich_family_edit_properties')
         ) {
             $form = $event->getForm();
             foreach ($form as $field) {

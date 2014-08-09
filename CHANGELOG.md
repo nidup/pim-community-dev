@@ -1,6 +1,14 @@
 # 1.2.0-x
 
 ## Improvements
+
+## Bug fixes
+
+## BC breaks
+
+# 1.2.0-RC2
+
+## Improvements
 - Create a metric factory
 - Improve UI for defining role permissions
 - Throw exception on install command if fixture directory not found
@@ -15,6 +23,8 @@
 - Display a file attribute attribute as column in product grid displays Array
 - History tab crashes when product imported without real time versioning
 - Creating an attribute with the code "id" should be forbidden
+- Switch not well displayed on other locales than en_US
+- Associations are now well saved on product import
 
 ## BC breaks
 - Remove backendStorage property on attribute entities
@@ -24,6 +34,9 @@
 - Rename pim_catalog.datasource.smart and pim_catalog.datasource.product respectively by pim_datagrid.datasource.smart and pim_datagrid.datasource.product
 - Add method setMassActionRepository and remove the MassActionRepositoryInterface from constructor
 - Introduce a dedicated pim_webservice.serializer to handle REST API
+- Rename ACL `pim_enrich_family_edit` to `pim_enrich_family_edit_properties`. This ACL now only check the access to the properties tab.
+- Rename ACL `pim_enrich_product_edit` to `pim_enrich_product_edit_attributes`. This ACL now only check the access to the attributes tab.
+- Added ProductCacheClearer to share cache clearing between product writers
 
 # 1.2.0-RC1
 

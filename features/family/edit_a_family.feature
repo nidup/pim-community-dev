@@ -48,9 +48,15 @@ Feature: Edit a family
     And I am on the "Administrator" role page
     And I visit the "Permissions" tab
     And I visit the "Families" group
-    And I remove rights to Edit a family
+    And I remove rights to Edit properties of a family
     And I save the role
     When I am on the "sneakers" family page
     Then the field Code should be disabled
     And the field Attribute used as label should be disabled
     And the field English (United States) should be disabled
+    # restore permissions (TODO: refactor this part)
+    Then I am on the "Administrator" role page
+    And I visit the "Permissions" tab
+    And I visit the "Families" group
+    And I grant rights to Edit properties of a family
+    And I save the role
