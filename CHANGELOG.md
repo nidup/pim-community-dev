@@ -3,6 +3,9 @@
 ## Improvements
 
 ## Bug fixes
+- Return to the family index page after cancelling family mass edit instead of product index
+- Fixed an error when all families are edited without any applied filters
+- Fixed a bug that allowed to mass edit only 10 families
 
 ## BC breaks
 
