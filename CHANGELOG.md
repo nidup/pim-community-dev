@@ -3,6 +3,7 @@
 ## Improvements
 
 ## Bug fixes
+- Fixed category order in the categories tab of products
 
 ## BC breaks
 
